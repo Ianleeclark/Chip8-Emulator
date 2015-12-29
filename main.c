@@ -17,7 +17,5 @@ int main(int argc, char **argv) {
     struct chip8_cpu* cpu = cpu_init();
     struct chip8_gfx* gfx = gfx_init();
 
-    gfx_create_window(argc, argv, gfx);
-
     return 0;
 }
