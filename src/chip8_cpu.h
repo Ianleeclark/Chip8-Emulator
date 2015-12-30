@@ -29,6 +29,6 @@ unsigned char* load_rom();
 
 // Start of helper functions
 void push_addr(struct chip8_cpu*);
-unsigned int lookup_bit_values(int);
+unsigned int lookup_bit_values(unsigned int);
 
 #endif //CHIP8EMU_CHIP8_CPU_H
