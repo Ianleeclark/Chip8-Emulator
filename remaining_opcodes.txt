@@ -1,6 +1,9 @@
-8XY6 	Shifts VX right by one. VF is set to the value of the least significant bit of VX before the shift.[2]
-8XYE 	Shifts VX left by one. VF is set to the value of the most significant bit of VX before the shift.[2]
 
 DXYN 	Sprites stored in memory at location in index register (I), 8bits wide. Wraps around the screen. If when drawn, clears a pixel, register VF is set to 1 otherwise it is zero. All drawing is XOR drawing (i.e. it toggles the screen pixels). Sprites are drawn starting at position VX, VY. N is the number of 8bit rows that need to be drawn. If N is greater than 1, second line continues at position VX, VY+1, and so o
-FX29 	Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
-FX33 	Stores the Binary-coded decimal representation of VX, with the most significant of three digits at the address in I, the middle digit at I plus 1, and the least significant digit at I plus 2. (In other words, take the decimal representation of VX, place the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2
+
+
+Kind of implemented:
+    FX29 	Sets I to the location of the sprite for the character in VX. Characters 0-F (in hexadecimal) are represented by a 4x5 font.
+    FX33 	Stores the Binary-coded decimal representation of VX, with the most significant of three digits at the address in I, the middle digit at I plus 1, and the least significant digit at I plus 2. (In other words, take the decimal representation of VX, place the hundreds digit in memory at location in I, the tens digit at location I+1, and the ones digit at location I+2
+    8XYE 	Shifts VX left by one. VF is set to the value of the most significant bit of VX before the shift.[2]
+    8XY6 	Shifts VX right by one. VF is set to the value of the least significant bit of VX before the shift.[2]

@@ -1,4 +1,4 @@
-//
+#include "gfx.h"//
 // Created by GrappigPanda on 12/28/15.
 //
 
@@ -7,10 +7,13 @@
 
 #include "gfx.h"
 
+
 struct chip8_cpu {
     unsigned char memory[4096]; // memory region -- 8 bits wide per mem location
     unsigned char V[16]; // 16 Registers -- 8 bits wide each register
     unsigned short I; // Address register -- 16 bit wide
+
+    chip8_gfx* gfx;
 
     unsigned short counter;
 
@@ -24,11 +27,11 @@ struct chip8_cpu {
 struct chip8_cpu* cpu_init();
 void cpu_memzero(struct chip8_cpu*);
 void run_cpu_cycle(struct chip8_cpu*);
-unsigned char* load_rom();
+void load_rom(struct chip8_cpu*, const char*);
 
 
 // Start of helper functions
 void push_addr(struct chip8_cpu*);
 unsigned int lookup_bit_values(unsigned int);
-
+unsigned int find_significant_bit(int, unsigned short);
 #endif //CHIP8EMU_CHIP8_CPU_H

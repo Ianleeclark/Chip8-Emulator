@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include "chip8_cpu.h"
+#include "gfx.h"
 
 void cpu_memzero(struct chip8_cpu* cpu) {
     memset(cpu->memory, 0, 4096);
@@ -13,8 +14,11 @@ void cpu_memzero(struct chip8_cpu* cpu) {
     memset(cpu->stack, 0 , 16);
 }
 
+
+
 struct chip8_cpu* cpu_init() {
     struct chip8_cpu* tmp = malloc(2 * sizeof(struct chip8_cpu));
+    tmp->gfx = gfx_init();
 
     cpu_memzero(tmp);
 
@@ -32,6 +36,8 @@ void run_cpu_cycle(struct chip8_cpu* cpu) {
     unsigned short op = cpu->memory[cpu->counter] << 8 |
                         cpu->memory[cpu->counter + 1];
 
+    printf("Running cycle on opcode: %d\n", op);
+
     switch(op & 0xF000) {
         case(0x0000): {
             switch(op & 0x000F) {
@@ -42,8 +48,7 @@ void run_cpu_cycle(struct chip8_cpu* cpu) {
                 }
                 case(0x000E): {
                     // 0x00EE <-> Return from sub-routine.
-                    cpu->counter = cpu->stack[--cpu->stack_pointer - 1];
-                    cpu->stack_pointer--;
+                    cpu->counter = cpu->stack[--cpu->stack_pointer];
                     break;
                 }
             }
@@ -160,7 +165,10 @@ void run_cpu_cycle(struct chip8_cpu* cpu) {
                 }
                 case(0x0006): {
                     // 0x8XY6 ->
-
+                    // TODO(ian): Implement this opcode.
+                    cpu->V[0xF] = cpu->V[(op & 0x0F00) >> 8] & 7;
+                    cpu->V[(op & 0x0F00) >> 8] = cpu->V[(op & 0x0F00) >> 8] >> 1;
+                    cpu->counter += 2;
                     break;
                 }
                 case(0x0007): {
@@ -180,8 +188,8 @@ void run_cpu_cycle(struct chip8_cpu* cpu) {
                 }
                 case(0x000E): {
                     // 0x8XYE ->
-                    unsigned int x = lookup_bit_values(op & 0x0F00);
-                    cpu->V[x] &= cpu->V[lookup_bit_values(op & 0x00F0)];
+                    cpu->V[0xF] = cpu->V[(op & 0x0F00) >> 8] >> 7;
+                    cpu->V[(op & 0x0F00) >> 8] = cpu->V[(op & 0x0F00) >> 8] << 1;
                     cpu->counter += 2;
                     break;
                 }
@@ -219,7 +227,10 @@ void run_cpu_cycle(struct chip8_cpu* cpu) {
             break;
         }
         case(0xD000): {
-            // 0x1NNN <-> Jumps to address NNN.
+            // 0xDXYN <-> Display n-byte sprite starting at
+            unsigned int x = cpu->V[lookup_bit_values(op & 0x0F00)];
+            unsigned int y = cpu->V[lookup_bit_values(op & 0x00F0)];
+            unsigned int n = lookup_bit_values(op & 0x000F);
             break;
         }
         case(0xF000): {
@@ -262,15 +273,15 @@ void run_cpu_cycle(struct chip8_cpu* cpu) {
                 }
                 case(0x0029): {
                     // 0xFX29 <-> Set cpu->I to the location of sprite for digit cpu->V[x]
-                    unsigned int x = lookup_bit_values(op & 0x0F00);
-                    // TODO(ian): Implement this opcode, not sure what it means exactly.
+                    cpu->I = cpu->V[lookup_bit_values(op & 0x0F00)] * 0x5;
                     cpu->counter += 2;
                     break;
                 }
                 case(0x0033): {
                     // 0xFx33 <->
-                    unsigned int x = lookup_bit_values(op & 0x0F00);
-                    // TODO(ian): Implement this opcode, not sure what it means exactly.
+                    cpu->memory[cpu->I] = cpu->V[lookup_bit_values(op & 0x0f00)] / 100;
+                    cpu->memory[cpu->I + 1] = (cpu->V[lookup_bit_values(op & 0x0f00)] / 10) % 10;
+                    cpu->memory[cpu->I + 2] =(cpu->V[lookup_bit_values(op & 0x0f00)] % 100) % 10;
                     cpu->counter += 2;
                     break;
                 }
@@ -299,9 +310,48 @@ void run_cpu_cycle(struct chip8_cpu* cpu) {
             break;
         }
         default:
-            // Should we do anything here?
+            puts("How are we here");
+            return;
             break;
     }
+}
+
+void load_rom(struct chip8_cpu* cpu, const char* rom_title) {
+    // Todo(ian): Error checking here. Really hacking and all-in.
+    FILE* f;
+
+    puts("test");
+    f = fopen(rom_title, "rb");
+    printf("%s\n", rom_title);
+    if(f == NULL) {
+        puts("Failed to load rom");
+        return;
+    }
+
+    fseek(f, 0, SEEK_END);
+    long rom_size = ftell(f);
+    rewind(f);
+
+    if(rom_size <= 0) {
+        puts("Rom size too small!");
+        return;
+    }
+
+    char* rom_buffer = malloc(sizeof(char) * rom_size);
+    if(rom_buffer == NULL) {
+        printf("Failed to load rom\n\tRom Size: %ld\n", rom_size);
+        return;
+    }
+
+    fread(rom_buffer, 1, rom_size, f);
+
+    unsigned int i = 512;
+    for(i; i < rom_size; i++) {
+        cpu->memory[i + 0x200] = rom_buffer[i];
+    }
+
+    fclose(f);
+    free(rom_buffer);
 }
 
 void push_addr(struct chip8_cpu* cpu) {
@@ -327,4 +377,28 @@ unsigned int lookup_bit_values(unsigned int bit_value) {
             return_val = bit_value / value_cliffs[i];
     }
     return return_val;
+}
+
+unsigned int find_significant_bit(int least_or_most, unsigned short val) {
+    unsigned int bits[3] = {};
+    unsigned int i = 0;
+
+    bits[0] = lookup_bit_values(val & 0xF000);
+    unsigned int sig_bit = bits[i];
+    bits[1] = lookup_bit_values(val & 0x0F00);
+    bits[2] = lookup_bit_values(val & 0x00F0);
+    bits[3] = lookup_bit_values(val & 0x000F);
+
+    if(least_or_most == 0) {
+        for(i = 0; i <= 3; i++) {
+            if(bits[i] < sig_bit)
+                sig_bit = bits[i];
+        }
+    } else {
+         for(i = 0; i <= 3; i++) {
+            if(bits[i])
+                sig_bit = bits[i];
+         }
+    }
+    return sig_bit;
 }
